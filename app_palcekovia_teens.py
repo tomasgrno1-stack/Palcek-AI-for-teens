@@ -245,7 +245,7 @@ Tvoje zásady:
                     history_data.append({"role": r, "parts": [m["content"]]})
 
                 model = genai.GenerativeModel(
-                    model_name="gemini-2.0-flash",
+                    model_name="gemini-3.6-flash",
                     system_instruction=system_instruction,
                     generation_config=gen_config
                 )
