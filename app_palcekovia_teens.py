@@ -122,7 +122,7 @@ with st.sidebar:
         st.session_state["pouzity_prompt"] = "Daj mi zopár dobrých tipov, ako reagovať s nadhľadom a sebavedomím, keď sa ma ľudia pýtajú nevhodné otázky o mojej výške."
         st.rerun()
 
-    if st.button("💻 Kódenie, AI a technológie", use_container_width=True):
+    if st.button("💻 Kódovanie, AI a technológie", use_container_width=True):
         st.session_state["pouzity_prompt"] = "Chcem sa naučiť niečo nové z technológií alebo programovania. Čím je najlepšie začať?"
         st.rerun()
 
