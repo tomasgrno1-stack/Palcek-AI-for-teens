@@ -102,7 +102,7 @@ def novy_chat():
 # 5. Sidebar - Témy pre mladých
 with st.sidebar:
     st.markdown('<p class="teen-header">⚡ Pulse AI</p>', unsafe_allow_html=True)
-    st.caption("AI partner pre dospievajúcich a mladých ľudí")
+    st.caption("AI partner pre dospievajúcich Palčekov")
     st.write("")
 
     if st.button("➕ Nová konverzácia", use_container_width=True):
