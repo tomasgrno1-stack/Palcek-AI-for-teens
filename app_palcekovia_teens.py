@@ -1,0 +1,265 @@
+import streamlit as st
+import google.generativeai as genai
+from PIL import Image
+import uuid
+import pypdf
+import docx
+
+# 1. Konfigurácia aplikácie pre tínedžerov
+st.set_page_config(
+    page_title="Palčekovia Teen AI",
+    page_icon="⚡",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# 2. Moderný, „cool“ dark-mode dizajn (Neon / Cyberpunk prvky)
+st.markdown("""
+    <style>
+    .stApp {
+        background: linear-gradient(135deg, #090d16 0%, #111827 50%, #0f172a 100%);
+        color: #f3f4f6;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    .teen-header {
+        font-size: 2.5rem;
+        font-weight: 900;
+        background: linear-gradient(90deg, #06b6d4 0%, #3b82f6 50%, #8b5cf6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0px;
+    }
+
+    /* Bočný panel */
+    [data-testid="stSidebar"] {
+        background-color: rgba(15, 23, 42, 0.95) !important;
+        border-right: 1px solid rgba(59, 130, 246, 0.2);
+    }
+
+    /* Bubliny správ */
+    [data-testid="stChatMessage"] {
+        background-color: rgba(30, 41, 59, 0.6) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        padding: 1.2rem;
+        margin-bottom: 1rem;
+    }
+
+    [data-testid="stChatMessageAvatarUser"] {
+        background: linear-gradient(135deg, #ec4899, #8b5cf6) !important;
+    }
+
+    [data-testid="stChatMessageAvatarAssistant"] {
+        background: linear-gradient(135deg, #06b6d4, #3b82f6) !important;
+    }
+
+    /* Vstupný panel */
+    [data-testid="stChatInput"] {
+        border-radius: 16px;
+        border: 1px solid rgba(59, 130, 246, 0.4) !important;
+        background-color: rgba(15, 23, 42, 0.9) !important;
+    }
+
+    /* Tlačidlá */
+    .stButton > button {
+        border-radius: 12px !important;
+        background: linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(59, 130, 246, 0.25)) !important;
+        border: 1px solid rgba(6, 182, 212, 0.4) !important;
+        color: #ffffff !important;
+        font-weight: 600 !important;
+        transition: all 0.3s ease;
+    }
+
+    .stButton > button:hover {
+        border-color: #06b6d4 !important;
+        box-shadow: 0 0 12px rgba(6, 182, 212, 0.4);
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# 3. Načítanie API kľúča
+if "GOOGLE_API_KEY" in st.secrets:
+    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+else:
+    st.error("Chýba GOOGLE_API_KEY v Secrets!")
+    st.stop()
+
+# 4. Správa pamäte chatu
+if "teen_chats" not in st.session_state:
+    st.session_state.teen_chats = {}
+
+if "current_teen_id" not in st.session_state:
+    init_id = str(uuid.uuid4())
+    st.session_state.teen_chats[init_id] = {"title": "💬 Nový chat", "messages": []}
+    st.session_state.current_teen_id = init_id
+
+def novy_chat():
+    nid = str(uuid.uuid4())
+    st.session_state.teen_chats[nid] = {"title": "💬 Nový chat", "messages": []}
+    st.session_state.current_teen_id = nid
+
+# 5. Sidebar - Témy pre mladých
+with st.sidebar:
+    st.markdown('<p class="teen-header">⚡ Pulse AI</p>', unsafe_allow_html=True)
+    st.caption("AI partner pre dospievajúcich a mladých ľudí")
+    st.write("")
+
+    if st.button("➕ Nová konverzácia", use_container_width=True):
+        novy_chat()
+        st.rerun()
+
+    st.divider()
+
+    # Tlačidlá rýchlych tém
+    st.subheader("🚀 Rýchle témy")
+
+    if st.button("📚 Pomoc so školou a učivom", use_container_width=True):
+        st.session_state["pouzity_prompt"] = "Pomôž mi rýchlo a jednoducho pochopiť túto tému do školy, napíš mi aj zhrnutie v odrážkach:"
+        st.rerun()
+
+    if st.button("💪 Sebavedomie a komunikácia", use_container_width=True):
+        st.session_state["pouzity_prompt"] = "Daj mi zopár dobrých tipov, ako reagovať s nadhľadom a sebavedomím, keď sa ma ľudia pýtajú nevhodné otázky o mojej výške."
+        st.rerun()
+
+    if st.button("💻 Kódenie, AI a technológie", use_container_width=True):
+        st.session_state["pouzity_prompt"] = "Chcem sa naučiť niečo nové z technológií alebo programovania. Čím je najlepšie začať?"
+        st.rerun()
+
+    if st.button("🎯 Hľadanie koníčkov / Šport", use_container_width=True):
+        st.session_state["pouzity_prompt"] = "Aké zaujímavé koníčky, športy alebo aktivity sú super pre mladých ľudí s nižším vzrastom?"
+        st.rerun()
+
+    st.divider()
+    st.subheader("💬 História")
+
+    for cid, cdata in list(st.session_state.teen_chats.items()):
+        active = (cid == st.session_state.current_teen_id)
+        prefix = "⚡ " if active else "💬 "
+        
+        col_m, col_d = st.columns([0.85, 0.15])
+        with col_m:
+            if st.button(f"{prefix}{cdata['title']}", key=f"teen_btn_{cid}", use_container_width=True):
+                st.session_state.current_teen_id = cid
+                st.rerun()
+        with col_d:
+            if st.button("🗑", key=f"teen_del_{cid}"):
+                del st.session_state.teen_chats[cid]
+                if st.session_state.current_teen_id == cid:
+                    if st.session_state.teen_chats:
+                        st.session_state.current_teen_id = list(st.session_state.teen_chats.keys())[0]
+                    else:
+                        novy_chat()
+                st.rerun()
+
+# 6. Hlavná časť aplikácie
+curr_chat = st.session_state.teen_chats[st.session_state.current_teen_id]
+
+st.markdown('<p class="teen-header">⚡ Pulse AI Assistant</p>', unsafe_allow_html=True)
+st.caption("Priamy, inteligentný a rešpektujúci spoločník. Opýtaj sa na cokoľvek.")
+st.write("")
+
+# Zobrazenie histórie správ
+for msg in curr_chat["messages"]:
+    avatar = "⚡" if msg["role"] == "assistant" else "👤"
+    with st.chat_message(msg["role"], avatar=avatar):
+        if "file_name" in msg:
+            st.caption(f"📎 Priložený súbor: **{msg['file_name']}**")
+        if "image" in msg:
+            st.image(msg["image"], use_container_width=True)
+        st.markdown(msg["content"])
+
+# 7. Vstup pre používateľa
+col_file, col_input = st.columns([0.08, 0.92])
+
+uploaded_file = None
+with col_file:
+    with st.popover("📎"):
+        uploaded_file = st.file_uploader("Pridať súbor / fotku", type=["png", "jpg", "jpeg", "pdf", "txt", "docx"])
+
+with col_input:
+    user_input = st.chat_input("Povedz čo máš na mysli...")
+
+user_prompt = user_input or st.session_state.pop("pouzity_prompt", None)
+
+# 8. Generovanie odpovede
+if user_prompt:
+    if len(curr_chat["messages"]) == 0:
+        curr_chat["title"] = user_prompt[:20] + "..." if len(user_prompt) > 20 else user_prompt
+
+    msg_payload = {"role": "user", "content": user_prompt}
+    prompt_parts = [user_prompt]
+
+    if uploaded_file is not None:
+        fname = uploaded_file.name
+        ftype = uploaded_file.type
+        msg_payload["file_name"] = fname
+
+        if ftype in ["image/png", "image/jpeg", "image/jpg"]:
+            img = Image.open(uploaded_file)
+            prompt_parts.append(img)
+            msg_payload["image"] = img
+        elif ftype == "text/plain":
+            text_data = uploaded_file.read().decode("utf-8")
+            prompt_parts.append(f"\n\nObsah súboru ({fname}):\n{text_data}")
+        elif ftype == "application/pdf":
+            try:
+                reader = pypdf.PdfReader(uploaded_file)
+                pdf_text = "".join([page.extract_text() or "" for page in reader.pages])
+                prompt_parts.append(f"\n\nObsah PDF ({fname}):\n{pdf_text}")
+            except Exception as e:
+                st.error(f"Chyba pri čítaní PDF: {e}")
+
+    curr_chat["messages"].append(msg_payload)
+    
+    with st.chat_message("user", avatar="👤"):
+        if "file_name" in msg_payload:
+            st.caption(f"📎 Priložený súbor: **{msg_payload['file_name']}**")
+        if "image" in msg_payload:
+            st.image(msg_payload["image"], use_container_width=True)
+        st.markdown(user_prompt)
+
+    with st.chat_message("assistant", avatar="⚡"):
+        response_placeholder = st.empty()
+        
+        with st.spinner("Pulse premýšľa..."):
+            try:
+                # Špeciálne nastavený systémový prompt pre pubertakov / mladých ľudí
+                system_instruction = """Si Pulse – moderný, chytry, empatický a parťácky AI asistent pre dospievajúcich a mladých ľudí (13 - 18+ rokov) zo združenia Palčekovia.
+Tvoje zásady:
+1. Hovor rovnocenne ako dospelý spoločník alebo skúsenejší kamarát. NEHOVOR ako s malými deťmi (žiadne zbytočné zdrobneninky, infantilné príbehy ani umelé poučovanie).
+2. Používaj prirodzenú slovenčinu, moderný štýl a vecný tón.
+3. Keď riešia školu, vysvetľuj veci jasne, štruktúrovane a efektívne.
+4. Keď riešia osobné témy, sebavedomie, vzťahy alebo achondropláziu/výšku, odpovedaj s veľkým rešpektom, podporuj ich samostatnosť, kritické myslenie a nadhľad.
+5. Pomáhaj im s technológiami, koníčkami, plánovaním a prípravou do života."""
+
+                gen_config = genai.types.GenerationConfig(
+                    temperature=0.7,
+                    top_p=0.95,
+                    max_output_tokens=8192
+                )
+
+                history_data = []
+                for m in curr_chat["messages"][:-1][-10:]:
+                    r = "user" if m["role"] == "user" else "model"
+                    history_data.append({"role": r, "parts": [m["content"]]})
+
+                model = genai.GenerativeModel(
+                    model_name="gemini-2.0-flash",
+                    system_instruction=system_instruction,
+                    generation_config=gen_config
+                )
+
+                chat_session = model.start_chat(history=history_data)
+                response = chat_session.send_message(prompt_parts, stream=True)
+
+                full_response = ""
+                for chunk in response:
+                    full_response += chunk.text
+                    response_placeholder.markdown(full_response + "▌")
+
+                response_placeholder.markdown(full_response)
+                curr_chat["messages"].append({"role": "assistant", "content": full_response})
+
+            except Exception as err:
+                response_placeholder.error(f"Chyba: {err}")
